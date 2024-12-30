@@ -1,0 +1,130 @@
+sudo apt install software-properties-common
+sudo add-apt-repository -y ppa:ethereum/ethereum
+sudo apt update
+sudo apt install geth
+mkdir private-ethereum
+cd private-ethereum
+{
+    "config": {
+        "chainId": 2024,
+        "homesteadBlock": 0,
+        "eip150Block": 0,
+        "eip155Block": 0,
+        "eip158Block": 0
+    },
+    "difficulty": "1",
+    "gasLimit": "8000000",
+    "alloc": {}
+}
+geth --datadir ./data init genesis.json
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SimpleStorage {
+    uint256 public value;
+
+    function set(uint256 _value) public {
+        value = _value;
+    }
+
+    function get() public view returns (uint256) {
+        return value;
+    }
+}
+
+{
+    "config": {
+        "chainId": 2024,
+        "homesteadBlock": 0,
+        "eip150Block": 0,
+        "eip155Block": 0,
+        "eip158Block": 0,
+        "byzantiumBlock": 0,
+        "constantinopleBlock": 0,
+        "petersburgBlock": 0,
+        "istanbulBlock": 0
+    },
+    "difficulty": "1",
+    "gasLimit": "8000000",
+    "alloc": {
+        "0x0000000000000000000000000000000000000000": { "balance": "1000000000000000000" }
+    }
+}
+mkdir -p private-ethereum/data
+geth --datadir ./private-ethereum/data init genesis.json
+geth --datadir ./private-ethereum/data --networkid 2024 --http --http.port 8545 --http.addr 127.0.0.1 --http.api eth,net,web3,personal,miner console
+import React, { useState } from "react";
+import { ethers } from "ethers";
+
+const contractABI = [
+    {
+        "inputs": [{ "internalType": "uint256", "name": "_value", "type": "uint256" }],
+        "name": "set",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+    }
+];
+
+const contractAddress = "YOUR_DEPLOYED_CONTRACT_ADDRESS";
+
+function App() {
+    const [provider, setProvider] = useState(null);
+    const [contract, setContract] = useState(null);
+    const [value, setValue] = useState(0);
+    const [inputValue, setInputValue] = useState("");
+
+    const connectWallet = async () => {
+        if (window.ethereum) {
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            setProvider(provider);
+
+            const signer = provider.getSigner();
+            const contract = new ethers.Contract(contractAddress, contractABI, signer);
+            setContract(contract);
+        } else {
+            alert("MetaMask is required!");
+        }
+    };
+
+    const setContractValue = async () => {
+        const tx = await contract.set(parseInt(inputValue));
+        await tx.wait();
+        alert("Value set successfully!");
+    };
+
+    const getContractValue = async () => {
+        const value = await contract.get();
+        setValue(value.toString());
+    };
+
+    return (
+        <div>
+            <button onClick={connectWallet}>Connect Wallet</button>
+            <div>
+                <h3>Set Value</h3>
+                <input
+                    type="text"
+                    placeholder="Enter value"
+                    onChange={(e) => setInputValue(e.target.value)}
+                />
+                <button onClick={setContractValue}>Set</button>
+            </div>
+            <div>
+                <h3>Get Value</h3>
+                <button onClick={getContractValue}>Get</button>
+                <p>Value: {value}</p>
+            </div>
+        </div>
+    );
+}
+
+export default App;
